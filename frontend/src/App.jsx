@@ -8,6 +8,31 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const handleFileUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('resume', file);
+
+  try {
+    const response = await fetch('http://localhost:5000/extract-text', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to extract text');
+    }
+
+    setResume(data.text);
+  } catch (err) {
+    setError(err.message);
+  }
+  };
+
   const handleSubmit = async () => {
     setError('');
     setResult(null);
@@ -41,50 +66,69 @@ function App() {
   };
 
   return (
-    <div style={{ maxWidth: '700px', margin: '40px auto', padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>AI Resume / JD Matcher</h1>
-
-      <div style={{ marginBottom: '16px' }}>
-        <label><strong>Your Resume</strong></label>
-        <textarea
-          value={resume}
-          onChange={(e) => setResume(e.target.value)}
-          rows={8}
-          style={{ width: '100%', marginTop: '8px', padding: '10px' }}
-          placeholder="Paste your resume text here..."
-        />
+    <div className="app-container">
+      <div className="header">
+        <h1>AI Resume Matcher</h1>
+        <p>Paste your resume and a job description to see how well they align</p>
       </div>
 
-      <div style={{ marginBottom: '16px' }}>
-        <label><strong>Job Description</strong></label>
-        <textarea
-          value={jobDescription}
-          onChange={(e) => setJobDescription(e.target.value)}
-          rows={8}
-          style={{ width: '100%', marginTop: '8px', padding: '10px' }}
-          placeholder="Paste the job description here..."
-        />
+      <div className="card">
+        <div className="field">
+          <label>Your Resume</label>
+          <textarea
+            value={resume}
+            onChange={(e) => setResume(e.target.value)}
+            rows={8}
+            placeholder="Paste your resume text here..."
+          />
+        </div>
+
+        <div className="field">
+          <label>Your Resume</label>
+          <input
+            type="file"
+            accept=".pdf"
+            onChange={handleFileUpload}
+            className="file-input"
+          />
+          <p className="upload-hint">Upload a PDF, or paste text below</p>
+          <textarea
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
+            rows={8}
+            placeholder="Paste the job description here..."
+          />
+        </div>
+
+        <button onClick={handleSubmit} disabled={loading}>
+          {loading ? 'Analyzing...' : 'Check Match'}
+        </button>
+
+        {error && <p className="error-text">{error}</p>}
       </div>
-
-      <button onClick={handleSubmit} disabled={loading} style={{ padding: '10px 20px', cursor: 'pointer' }}>
-        {loading ? 'Analyzing...' : 'Check Match'}
-      </button>
-
-      {error && <p style={{ color: 'red', marginTop: '16px' }}>{error}</p>}
 
       {result && (
-        <div style={{ marginTop: '24px', padding: '16px', border: '1px solid #ccc', borderRadius: '8px' }}>
-          <h2>Match Score: {result.matchScore}%</h2>
+        <div className="card result-card">
+          <div className="score-badge">
+            <span className="score-number">{result.matchScore}%</span>
+            <span className="score-label">Match Score</span>
+          </div>
 
-          <h3>Missing Keywords</h3>
-          <ul>
-            {result.missingKeywords.map((kw, i) => <li key={i}>{kw}</li>)}
-          </ul>
+          <div className="result-section">
+            <h3>Missing Keywords</h3>
+            <div className="keyword-pills">
+              {result.missingKeywords.map((kw, i) => (
+                <span key={i} className="pill">{kw}</span>
+              ))}
+            </div>
+          </div>
 
-          <h3>Suggestions</h3>
-          <ul>
-            {result.suggestions.map((s, i) => <li key={i}>{s}</li>)}
-          </ul>
+          <div className="result-section">
+            <h3>Suggestions</h3>
+            <ul className="suggestion-list">
+              {result.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+            </ul>
+          </div>
         </div>
       )}
     </div>

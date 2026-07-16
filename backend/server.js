@@ -2,17 +2,37 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const { GoogleGenAI } = require('@google/genai');
+const multer = require('multer');
+const { PDFParse } = require('pdf-parse');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(cors());
 app.use(express.json());
 
 app.get('/', (req, res) => {
   res.json({ message: 'Backend is running!' });
+});
+
+app.post('/extract-text', upload.single('resume'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const parser = new PDFParse({ data: req.file.buffer });
+    const result = await parser.getText();
+    await parser.destroy();
+
+    res.json({ text: result.text });
+  } catch (error) {
+    console.error('PDF extraction error:', error);
+    res.status(500).json({ error: 'Failed to extract text from PDF' });
+  }
 });
 
 app.post('/match', async (req, res) => {
