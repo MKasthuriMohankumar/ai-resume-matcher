@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import './App.css';
 
 function App() {
@@ -7,30 +7,54 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
 
-  const handleFileUpload = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const formData = new FormData();
-  formData.append('resume', file);
-
-  try {
-    const response = await fetch('http://localhost:5000/extract-text', {
-      method: 'POST',
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to extract text');
+  const processFile = async (file) => {
+    if (!file || file.type !== 'application/pdf') {
+      setError('Please upload a PDF file');
+      return;
     }
 
-    setResume(data.text);
-  } catch (err) {
-    setError(err.message);
-  }
+    const formData = new FormData();
+    formData.append('resume', file);
+
+    try {
+      const response = await fetch('http://localhost:5000/extract-text', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to extract text');
+      }
+
+      setResume(data.text);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    processFile(e.target.files[0]);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    processFile(e.dataTransfer.files[0]);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
   };
 
   const handleSubmit = async () => {
@@ -65,53 +89,148 @@ function App() {
     }
   };
 
+  const getScoreColor = (score) => {
+    if (score >= 75) return '#4ade80';
+    if (score >= 50) return '#fbbf24';
+    return '#f87171';
+  };
+
+  const ScoreRing = ({ score }) => {
+    const radius = 54;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (score / 100) * circumference;
+    const color = getScoreColor(score);
+
+    return (
+      <div className="score-ring-wrapper">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r={radius} className="ring-bg" />
+          <circle
+            cx="70"
+            cy="70"
+            r={radius}
+            stroke={color}
+            strokeWidth="10"
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            transform="rotate(-90 70 70)"
+            className="ring-progress"
+          />
+        </svg>
+        <div className="ring-text">
+          <span className="ring-number" style={{ color }}>{score}%</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="app-container">
+      <nav className="navbar">
+        <div className="brand">
+          <div className="brand-icon">AI</div>
+          <span>Resume Matcher</span>
+        </div>
+        <a href="https://github.com/MKasthuriMohankumar/ai-resume-matcher" target="_blank" rel="noreferrer" className="github-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+        </a>
+      </nav>
+
       <div className="header">
-        <h1>AI Resume Matcher</h1>
+        <h1>Know your match before you apply</h1>
         <p>Paste your resume and a job description to see how well they align</p>
       </div>
 
       <div className="card">
-        <div className="field">
-          <label>Your Resume</label>
-          <textarea
-            value={resume}
-            onChange={(e) => setResume(e.target.value)}
-            rows={8}
-            placeholder="Paste your resume text here..."
-          />
-        </div>
+        <div className="two-column">
+          <div className="field">
+            <label>
+              <span className="step-badge">1</span>
+              Your Resume
+            </label>
+            <div
+              className={`dropzone ${isDragging ? 'dragging' : ''}`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onClick={() => fileInputRef.current.click()}
+            >
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={handleFileUpload}
+                ref={fileInputRef}
+                className="hidden-input"
+              />
+              <svg className="upload-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <path d="M12 16V4M12 4L7 9M12 4l5 5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Drag & drop a PDF, or click to browse</span>
+            </div>
+            <textarea
+              value={resume}
+              onChange={(e) => setResume(e.target.value)}
+              rows={8}
+              placeholder="...or paste your resume text here"
+            />
+          </div>
 
-        <div className="field">
-          <label>Your Resume</label>
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={handleFileUpload}
-            className="file-input"
-          />
-          <p className="upload-hint">Upload a PDF, or paste text below</p>
-          <textarea
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-            rows={8}
-            placeholder="Paste the job description here..."
-          />
+          <div className="field">
+            <label>
+              <span className="step-badge">2</span>
+              Job Description
+            </label>
+            <div className="dropzone-spacer">
+              <svg className="spacer-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <path d="M9 12h6M9 16h6M9 8h6M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Paste the full JD text below</span>
+            </div>
+            <textarea
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              rows={8}
+              placeholder="Paste the job description here..."
+            />
+          </div>
         </div>
 
         <button onClick={handleSubmit} disabled={loading}>
-          {loading ? 'Analyzing...' : 'Check Match'}
+          {loading ? <span className="spinner"></span> : 'Check Match'}
         </button>
 
         {error && <p className="error-text">{error}</p>}
       </div>
 
-      {result && (
+      {loading && (
+        <div className="card result-card">
+          <div className="skeleton skeleton-ring"></div>
+          <div className="skeleton skeleton-line" style={{ width: '40%' }}></div>
+          <div className="skeleton skeleton-pill"></div>
+          <div className="skeleton skeleton-line" style={{ width: '90%' }}></div>
+          <div className="skeleton skeleton-line" style={{ width: '75%' }}></div>
+        </div>
+      )}
+
+      {!result && !loading && (
+        <div className="card empty-state">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4">
+            <circle cx="11" cy="11" r="7" strokeLinecap="round"/>
+            <path d="M21 21l-4.3-4.3" strokeLinecap="round"/>
+          </svg>
+          <p>Your match results will appear here</p>
+        </div>
+      )}
+
+      {result && !loading && (
         <div className="card result-card">
           <div className="score-badge">
-            <span className="score-number">{result.matchScore}%</span>
-            <span className="score-label">Match Score</span>
+            <ScoreRing score={result.matchScore} />
           </div>
 
           <div className="result-section">
@@ -131,6 +250,21 @@ function App() {
           </div>
         </div>
       )}
+
+      <footer className="footer">
+        <span>Built with</span>
+        <div className="tech-pills">
+          <span className="tech-pill">React</span>
+          <span className="tech-pill">Node.js</span>
+          <span className="tech-pill">Gemini API</span>
+        </div>
+        <p className="license-line">
+          © 2026 Kasthuri M · MIT Licensed ·{' '}
+          <a href="https://github.com/MKasthuriMohankumar/ai-resume-matcher" target="_blank" rel="noreferrer">
+            View source
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
