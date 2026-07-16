@@ -20,7 +20,7 @@ function App() {
     formData.append('resume', file);
 
     try {
-      const response = await fetch('http://localhost:5000/extract-text', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/extract-text`, {
         method: 'POST',
         body: formData,
       });
@@ -69,7 +69,7 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/match', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/match`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resume, jobDescription }),
@@ -108,7 +108,7 @@ function App() {
           <circle
             cx="70"
             cy="70"
-            r={radius}
+            r={radius}fetch
             stroke={color}
             strokeWidth="10"
             fill="none"
