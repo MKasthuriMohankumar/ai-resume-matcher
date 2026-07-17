@@ -8,6 +8,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
   const fileInputRef = useRef(null);
 
   const processFile = async (file) => {
@@ -89,6 +91,17 @@ function App() {
     }
   };
 
+  const fetchHistory = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/history`);
+      const data = await response.json();
+      setHistory(data);
+      setShowHistory(true);
+    } catch (err) {
+      setError('Failed to load history');
+    }
+  };
+
   const getScoreColor = (score) => {
     if (score >= 75) return '#4ade80';
     if (score >= 50) return '#fbbf24';
@@ -108,7 +121,7 @@ function App() {
           <circle
             cx="70"
             cy="70"
-            r={radius}fetch
+            r={radius}
             stroke={color}
             strokeWidth="10"
             fill="none"
@@ -206,6 +219,35 @@ function App() {
 
         {error && <p className="error-text">{error}</p>}
       </div>
+
+      <button className="history-toggle" onClick={showHistory ? () => setShowHistory(false) : fetchHistory}>
+        {showHistory ? 'Hide Recent Matches' : 'View Recent Matches'}
+      </button>
+
+      {showHistory && (
+        <div className="card history-card">
+          <h3>Recent Matches</h3>
+          {history.length === 0 ? (
+            <p className="empty-history">No matches yet — run your first one above!</p>
+          ) : (
+            <div className="history-list">
+              {history.map((item) => (
+                <div key={item.id} className="history-item">
+                  <div className="history-score" style={{ color: getScoreColor(item.match_score) }}>
+                    {item.match_score}%
+                  </div>
+                  <div className="history-details">
+                    <p className="history-jd">{item.jd_snippet.slice(0, 80)}...</p>
+                    <p className="history-date">
+                      {new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {loading && (
         <div className="card result-card">

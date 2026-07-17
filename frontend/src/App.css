@@ -497,3 +497,70 @@ textarea::-webkit-scrollbar-thumb:hover {
   font-size: 12px;
   color: #9ca3af;
 }
+
+.history-toggle {
+  background: transparent;
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  color: #a5b4fc;
+  box-shadow: none;
+  margin-top: 0;
+  margin-bottom: 24px;
+}
+
+.history-toggle:hover:not(:disabled) {
+  background: rgba(129, 140, 248, 0.08);
+  transform: none;
+  box-shadow: none;
+}
+
+.history-card h3 {
+  color: #e5e7eb;
+  font-size: 14.5px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.empty-history {
+  color: #6b7280;
+  font-size: 14px;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-score {
+  font-size: 18px;
+  font-weight: 800;
+  min-width: 50px;
+}
+
+.history-jd {
+  color: #d1d5db;
+  font-size: 13.5px;
+  margin: 0 0 4px 0;
+}
+
+.history-date {
+  color: #6b7280;
+  font-size: 12px;
+  margin: 0;
+}
