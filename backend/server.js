@@ -4,11 +4,16 @@ require('dotenv').config();
 const { GoogleGenAI } = require('@google/genai');
 const multer = require('multer');
 const { PDFParse } = require('pdf-parse');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(cors());
@@ -66,11 +71,34 @@ Respond ONLY in this exact JSON format, nothing else, no markdown code fences:
     const responseText = response.text;
     const cleaned = responseText.replace(/```json|```/g, '').trim();
     const result = JSON.parse(cleaned);
-
+    const insertResult = await pool.query(
+      `INSERT INTO matches (resume_snippet, jd_snippet, match_score, missing_keywords, suggestions)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        resume.slice(0, 200),
+        jobDescription.slice(0, 200),
+        result.matchScore,
+        result.missingKeywords,
+        result.suggestions,
+      ]
+    );
+    console.log('Saved to database, rows affected:', insertResult.rowCount);
     res.json(result);
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Something went wrong processing your request' });
+  }
+});
+
+app.get('/history', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM matches ORDER BY created_at DESC LIMIT 10`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('History fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch match history' });
   }
 });
 
