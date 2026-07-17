@@ -564,3 +564,56 @@ textarea::-webkit-scrollbar-thumb:hover {
   font-size: 12px;
   margin: 0;
 }
+
+.delete-btn {
+  width: auto;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  padding: 6px;
+  margin: 0;
+  box-shadow: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+  transform: none;
+  box-shadow: none;
+}
+
+.resume-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.text-btn {
+  width: auto;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #9ca3af;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 7px 12px;
+  margin: 0;
+  box-shadow: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.text-btn:hover:not(:disabled) {
+  background: rgba(129, 140, 248, 0.08);
+  border-color: rgba(129, 140, 248, 0.3);
+  color: #c7d2fe;
+  transform: none;
+  box-shadow: none;
+}

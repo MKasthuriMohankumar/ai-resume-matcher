@@ -75,8 +75,8 @@ Respond ONLY in this exact JSON format, nothing else, no markdown code fences:
       `INSERT INTO matches (resume_snippet, jd_snippet, match_score, missing_keywords, suggestions)
        VALUES ($1, $2, $3, $4, $5)`,
       [
-        resume.slice(0, 200),
-        jobDescription.slice(0, 200),
+        resume,
+        jobDescription,
         result.matchScore,
         result.missingKeywords,
         result.suggestions,
@@ -99,6 +99,65 @@ app.get('/history', async (req, res) => {
   } catch (error) {
     console.error('History fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch match history' });
+  }
+});
+
+app.post('/save-resume', async (req, res) => {
+  try {
+    const { resumeText } = req.body;
+
+    if (!resumeText || !resumeText.trim()) {
+      return res.status(400).json({ error: 'Resume text is required' });
+    }
+
+    await pool.query(`DELETE FROM saved_resume`);
+
+    await pool.query(
+      `INSERT INTO saved_resume (resume_text) VALUES ($1)`,
+      [resumeText]
+    );
+
+    res.json({ message: 'Resume saved successfully' });
+  } catch (error) {
+    console.error('Save resume error:', error);
+    res.status(500).json({ error: 'Failed to save resume' });
+  }
+});
+
+app.get('/saved-resume', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT resume_text FROM saved_resume ORDER BY updated_at DESC LIMIT 1`
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ resumeText: null });
+    }
+
+    res.json({ resumeText: result.rows[0].resume_text });
+  } catch (error) {
+    console.error('Fetch saved resume error:', error);
+    res.status(500).json({ error: 'Failed to fetch saved resume' });
+  }
+});
+
+app.delete('/history/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `DELETE FROM matches WHERE id = $1 RETURNING id`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    res.json({ message: 'Deleted successfully', id: result.rows[0].id });
+  } catch (error) {
+    console.error('Delete error:', error);
+    res.status(500).json({ error: 'Failed to delete match' });
   }
 });
 

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './App.css';
 
 function App() {
@@ -10,6 +10,7 @@ function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
   const fileInputRef = useRef(null);
 
   const processFile = async (file) => {
@@ -102,6 +103,60 @@ function App() {
     }
   };
 
+  const deleteMatch = async (id, e) => {
+    e.stopPropagation();
+
+    const confirmed = window.confirm('Delete this match from your history?');
+    if (!confirmed) return;
+
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/history/${id}`, {
+        method: 'DELETE',
+      });
+      setHistory(history.filter((item) => item.id !== id));
+    } catch (err) {
+      setError('Failed to delete match');
+    }
+  };
+
+  const saveResume = async () => {
+    if (!resume.trim()) {
+      setError('Nothing to save — paste or upload a resume first');
+      return;
+    }
+
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/save-resume`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeText: resume }),
+      });
+      setError('');
+      alert('Resume saved! It will load automatically next time.');
+    } catch (err) {
+      setError('Failed to save resume');
+    }
+  };
+
+  const loadSavedResume = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/saved-resume`);
+      const data = await response.json();
+
+      if (data.resumeText) {
+        setResume(data.resumeText);
+      } else {
+        setError('No saved resume found');
+      }
+    } catch (err) {
+      setError('Failed to load saved resume');
+    }
+  };
+
+  useEffect(() => {
+    loadSavedResume();
+  }, []);
+
   const getScoreColor = (score) => {
     if (score >= 75) return '#4ade80';
     if (score >= 50) return '#fbbf24';
@@ -191,6 +246,14 @@ function App() {
               rows={8}
               placeholder="...or paste your resume text here"
             />
+            <div className="resume-actions">
+              <button type="button" className="text-btn" onClick={saveResume}>
+                💾 Save this resume
+              </button>
+              <button type="button" className="text-btn" onClick={loadSavedResume}>
+                📂 Load saved resume
+              </button>
+            </div>
           </div>
 
           <div className="field">
@@ -232,16 +295,59 @@ function App() {
           ) : (
             <div className="history-list">
               {history.map((item) => (
-                <div key={item.id} className="history-item">
-                  <div className="history-score" style={{ color: getScoreColor(item.match_score) }}>
-                    {item.match_score}%
+                <div key={item.id} className="history-item-wrapper">
+                  <div
+                    className="history-item"
+                    onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                  >
+                    <div className="history-score" style={{ color: getScoreColor(item.match_score) }}>
+                      {item.match_score}%
+                    </div>
+                    <div className="history-details">
+                      <p className="history-jd">{item.jd_snippet.slice(0, 80)}...</p>
+                      <p className="history-date">
+                        {new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <svg
+                      className={`chevron ${expandedId === item.id ? 'expanded' : ''}`}
+                      width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    >
+                      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <button className="delete-btn" onClick={(e) => deleteMatch(item.id, e)}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
                   </div>
-                  <div className="history-details">
-                    <p className="history-jd">{item.jd_snippet.slice(0, 80)}...</p>
-                    <p className="history-date">
-                      {new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
+
+                  {expandedId === item.id && (
+                    <div className="history-expanded">
+                      <div className="expanded-section">
+                        <h4>Resume</h4>
+                        <p className="expanded-text">{item.resume_snippet}</p>
+                      </div>
+                      <div className="expanded-section">
+                        <h4>Job Description</h4>
+                        <p className="expanded-text">{item.jd_snippet}</p>
+                      </div>
+                      <div className="expanded-section">
+                        <h4>Missing Keywords</h4>
+                        <div className="keyword-pills">
+                          {item.missing_keywords.map((kw, i) => (
+                            <span key={i} className="pill">{kw}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="expanded-section">
+                        <h4>Suggestions</h4>
+                        <ul className="suggestion-list">
+                          {item.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
